@@ -367,7 +367,7 @@ public function destroy($id)
 
         return view('admin.contents.edit', compact('contentMaster', 'genres', 'casts', 'roles', 'castRoles'));
     }
-
+/*
     public function update(Request $request)
     {
 
@@ -409,9 +409,10 @@ public function destroy($id)
                 'duration' => $request->duration,
                 'content_rating' => $request->content_rating,
                 'status' => $request->status ?? 'active',
-                // 'updated_at' => now(),
+                //'updated_at' => now(),
             ];
-dd($data);
+
+
             if ($request->hasFile('thumbnail')) {
                 if ($content->thumbnail && Storage::disk('public')->exists($content->thumbnail)) {
                     Storage::disk('public')->delete($content->thumbnail);
@@ -426,14 +427,14 @@ dd($data);
                 $data['full_video_url'] = $request->file('full_video')->store('videos', 'public');
             }
 
-            DB::table('content_master')->where('id', $contentMaster->id)->update($data);
+            DB::table('content_master')->where('id', $content->id)->update($data);
 
-            DB::table('content_cast')->where('content_id', $contentMaster->id)->delete();
+            DB::table('content_cast')->where('id', $content->id->id)->delete();
 
             if ($request->cast_id && $request->role_id && count($request->cast_id) == count($request->role_id)) {
                 foreach ($request->cast_id as $index => $castId) {
                     DB::table('content_cast')->insert([
-                        'content_id' => $contentMaster->id,
+                        'content_id' => $content->id,
                         'cast_id' => $castId,
                         'role_id' => $request->role_id[$index],
                         'created_at' => now(),
@@ -450,4 +451,74 @@ dd($data);
             return back()->with('error', 'Failed to update content.')->withInput();
         }
     }
+}
+    */
+    public function update(Request $request, $id)
+{
+    $request->validate([
+        // all validations...
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $content = DB::table('content_master')->where('id', $id)->first();
+
+        if (!$content) {
+            return back()->with('error', 'Content not found.');
+        }
+
+        $data = [
+            'movie_name' => $request->movie_name,
+            'genre_id' => $request->genre_id,
+            'trailer_url' => $request->trailer_url,
+            'release_year' => $request->release_year,
+            'description' => $request->description,
+            'language' => $request->language,
+            'duration' => $request->duration,
+            'content_rating' => $request->content_rating,
+            'status' => $request->status ?? 'active',
+            'updated_at' => now(),
+        ];
+
+        // Handle file uploads (same as before)
+        if ($request->hasFile('thumbnail')) {
+            if ($content->thumbnail && Storage::disk('public')->exists($content->thumbnail)) {
+                Storage::disk('public')->delete($content->thumbnail);
+            }
+            $data['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+        }
+
+        if ($request->hasFile('full_video')) {
+            if ($content->full_video_url && !str_contains($content->full_video_url, 'vimeo.com') && Storage::disk('public')->exists($content->full_video_url)) {
+                Storage::disk('public')->delete($content->full_video_url);
+            }
+            $data['full_video_url'] = $request->file('full_video')->store('videos', 'public');
+        }
+
+        DB::table('content_master')->where('id', $id)->update($data);
+
+        DB::table('content_cast')->where('content_id', $id)->delete();
+
+        if ($request->cast_id && $request->role_id && count($request->cast_id) == count($request->role_id)) {
+            foreach ($request->cast_id as $index => $castId) {
+                DB::table('content_cast')->insert([
+                    'content_id' => $id,
+                    'cast_id' => $castId,
+                    'role_id' => $request->role_id[$index],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        DB::commit();
+        return redirect()->route('contents.index')->with('success', 'Content updated successfully.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Content update failed: ' . $e->getMessage());
+        return back()->with('error', 'Failed to update content.')->withInput();
+    }
+}
+
 }

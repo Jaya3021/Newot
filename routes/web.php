@@ -38,6 +38,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     Route::post('/contents/form', [ContentMasterController::class, 'store'])->name('contents.store');
+    Route::post('/contents/update', [ContentMasterController::class, 'update'])->name('contents.update');
+    Route::put('/contents/update/{id}', [ContentMasterController::class, 'update'])->name('contents.update');
+
+
     Route::delete('/contents/{id}', [ContentMasterController::class, 'deleteUsingDB'])->name('contents.delete.db');
 
 });
